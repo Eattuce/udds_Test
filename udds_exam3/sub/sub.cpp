@@ -9,81 +9,62 @@
 /* IDL_TypeSupport.h中包含所有依赖的头文件 */
 #include "IDL_TypeSupport.h"
 
-int count = 0;
-bool cansend = false;
 
-DomainParticipant *participant = NULL;
-Subscriber *subscriber = NULL;
-Topic *topic = NULL;
-DataReader *reader = NULL;
-ReturnCode_t retcode;
-const char *type_name = NULL;
-int status = 0;
-InstanceHandle_t instance_handle = HANDLE_NIL;
-Publisher *publisher = NULL;
-UserDataTypeDataReader *UserDataType_reader = NULL;
-DataWriter *writer = NULL;
-UserDataTypeDataWriter * UserDataType_writer = NULL;
-UserDataType *instance = NULL;
+// class UserDataTypeListener : public DataReaderListener {
+// public:
+// 	virtual void on_data_available(DataReader* reader);
+// };
 
+// /* 重写继承过来的方法on_data_available()，在其中进行数据监听读取操作 */
+// void UserDataTypeListener::on_data_available(DataReader* reader)
+// {
+// 	UserDataTypeDataReader *UserDataType_reader = NULL;
+// 	UserDataTypeSeq data_seq;
+// 	SampleInfoSeq info_seq;
+// 	ReturnCode_t retcode;
+// 	int i;
 
-class UserDataTypeListener : public DataReaderListener {
-public:
-	virtual void on_data_available(DataReader* reader);
-};
+// 	/* 利用reader，创建一个读取UserDataType类型的UserDataType_reader*/
+// 	UserDataType_reader = UserDataTypeDataReader::narrow(reader);
+// 	if (UserDataType_reader == NULL) {
+// 		fprintf(stderr, "DataReader narrow error\n");
+// 		return;
+// 	}
 
-/* 重写继承过来的方法on_data_available()，在其中进行数据监听读取操作 */
-void UserDataTypeListener::on_data_available(DataReader* reader)
-{
-	UserDataTypeDataReader *UserDataType_reader = NULL;
-	UserDataTypeSeq data_seq;
-	SampleInfoSeq info_seq;
-	ReturnCode_t retcode;
-	int i;
+// 	/* 获取数据，存放至data_seq，data_seq是一个队列 */
+// 	retcode = UserDataType_reader->read(
+// 		data_seq, info_seq, 10, 0, 0, 0);
 
-	/* 利用reader，创建一个读取UserDataType类型的UserDataType_reader*/
-	UserDataType_reader = UserDataTypeDataReader::narrow(reader);
-	if (UserDataType_reader == NULL) {
-		fprintf(stderr, "DataReader narrow error\n");
-		return;
-	}
+// 	if (retcode == RETCODE_NO_DATA) {
+// 		return;
+// 	}
+// 	else if (retcode != RETCODE_OK) {
+// 		fprintf(stderr, "take error %d\n", retcode);
+// 		return;
+// 	}
 
-	/* 获取数据，存放至data_seq，data_seq是一个队列 */
-	retcode = UserDataType_reader->read(
-		data_seq, info_seq, 10, 0, 0, 0);
+// 	for (int i = 0; i < data_seq.length(); ++i) {
+// 		auto sample = data_seq[i];
+// 		if (sample.value == count && sample.id == 'a') {
+// 			std::cout << "B: Received message " << count << " from A." << std::endl;
+// 			instance->value = count;
+// 			instance->id = 'b';
 
-	if (retcode == RETCODE_NO_DATA) {
-		return;
-	}
-	else if (retcode != RETCODE_OK) {
-		fprintf(stderr, "take error %d\n", retcode);
-		return;
-	}
+// 			// sleep(1);
+// 			retcode = UserDataType_writer->write(*instance, instance_handle);
+// 			if (retcode != RETCODE_OK) {
+// 				fprintf(stderr, "write error %d\n", retcode);
+// 			}
 
-	for (int i = 0; i < data_seq.length(); ++i) {
-		auto sample = data_seq[i];
-		// if (/* sample.value == count && sample.id == 'a' && */ count < 1000) {
-			std::cout << "B: Received message " << count << " from A." << std::endl;
-			instance->value = count;
-			instance->id = 'b';
+// 			std::cout << "B: Sent reply message " << count << " to A." << std::endl;
 
-			// sleep(1);
-			retcode = UserDataType_writer->write(*instance, instance_handle);
-			if (retcode != RETCODE_OK) {
-				fprintf(stderr, "write error %d\n", retcode);
-			}
+// 			count++;
 
-			std::cout << "B: Sent reply message " << count << " to A." << std::endl;
+// 		}
+// 	}
+// }
 
-			count++;
-			cansend = true;
-
-			// break;
-		// }
-	}
-}
-
-UserDataTypeListener *reader_listener = new UserDataTypeListener();
+// UserDataTypeListener *reader_listener = new UserDataTypeListener();
 
 
 /* 删除所有实体 */
@@ -112,6 +93,21 @@ static int subscriber_shutdown(
 /* 订阅者函数 */
 extern "C" int subscriber_main(int domainId, int sample_count)
 {
+	int count = 0;
+	DomainParticipant *participant = NULL;
+	Subscriber *subscriber = NULL;
+	Topic *topic = NULL;
+	DataReader *reader = NULL;
+	ReturnCode_t retcode;
+	const char *type_name = NULL;
+	int status = 0;
+	Publisher *publisher = NULL;
+	UserDataTypeDataReader *UserDataType_reader = NULL;
+	DataWriter *writer = NULL;
+	UserDataTypeDataWriter * UserDataType_writer = NULL;
+	UserDataType *instance = NULL;
+	InstanceHandle_t instance_handle = HANDLE_NIL;
+
 
 	/* 1. 创建一个participant，可以在此处定制participant的QoS */
 	/* 建议1：在程序启动后优先创建participant，进行资源初始化*/
@@ -180,11 +176,11 @@ extern "C" int subscriber_main(int domainId, int sample_count)
 	/* 建议4：避免打算接收数据时创建datareader，接收数据后删除，该做法消耗资源，影响性能 */
 	reader = subscriber->create_datareader(
 		topic, DATAREADER_QOS_DEFAULT/* 默认QoS */,
-		reader_listener/* listener */, STATUS_MASK_ALL);
+		0/* listener */, STATUS_MASK_ALL);
 	if (reader == NULL) {
 		fprintf(stderr, "create_datareader error\n");
 		subscriber_shutdown(participant);
-		delete reader_listener;
+		// delete reader_listener;
 		return -1;
 	}
 
@@ -226,66 +222,59 @@ extern "C" int subscriber_main(int domainId, int sample_count)
 	// 	//保持进程一直运行
 	// }
 
-	// UserDataTypeSeq data_seq;
-	// SampleInfoSeq info_seq;
-	instance->value = count;
-	instance->id = 'b';
-	retcode = UserDataType_writer->write(*instance, instance_handle);
-	if (retcode != RETCODE_OK) {
-		fprintf(stderr, "write error %d\n", retcode);
-	}
+	// instance->value = count;
+	// instance->id = 'b';
+	// retcode = UserDataType_writer->write(*instance, instance_handle);
+	// if (retcode != RETCODE_OK) {
+	// 	fprintf(stderr, "write error %d\n", retcode);
+	// }
 
-	while (1) {
-		if (count > 1000){
-			break;
+	while (count < 10) {
+		UserDataTypeSeq data_seq;
+		SampleInfoSeq info_seq;
+
+		retcode = UserDataType_reader->read(data_seq, info_seq, 10, 0, 0, 0);
+		if (retcode != RETCODE_OK) {
+			fprintf(stderr, "read error %d\n", retcode);
 		}
-		// if (cansend){
-		// 	retcode = UserDataType_writer->write(*instance, instance_handle);
-		// 	cansend = false;
-		// 	if (retcode != RETCODE_OK) {
-		// 		fprintf(stderr, "write error %d\n", retcode);
-		// 	}
-		// }
 
-		// // wait for the message from A
-		// do{
-		// 	retcode = UserDataType_reader->take(data_seq, info_seq, 10, 0, 0, 0);
-		// } while (retcode == RETCODE_OK);
+		instance->value = count;
+		instance->id = 'b';
 
-		// bool received_message = false;
-		// for (int i = 0; i < data_seq.length(); ++i) {
-		// 	auto sample = data_seq[i];
-		// 	if (sample.value == count && sample.id == 'a') {
-		// 		received_message = true;
-		// 		std::cout << "B: Received message " << count << " from A." << std::endl;
+		// std::cout << "data_seq.lenth(): " << data_seq.length() << std::endl;
 
-		// 		// create a reply message and write it to the data writer
-		// 		instance->value = count;
-		// 		instance->id = 'b';
-		// 		retcode = UserDataType_writer->write(*instance, instance_handle);
-		// 		if (retcode != RETCODE_OK) {
-		// 			fprintf(stderr, "write error %d\n", retcode);
-		// 		}
+		bool received_message = false;
+		for (int i = 0; i < data_seq.length(); ++i) {
+			auto sample = data_seq[i];
+			std::cout << "i:" << i << " value: " << sample.value << " id: " << sample.id << std::endl;
+			if (sample.value == count && sample.id == 'a') {
+				received_message = true;
+				std::cout << "B: Received message " << count << " from A." << std::endl;
 
-		// 		std::cout << "B: Sent reply message " << count << " to A." << std::endl;
-		// 	}
-		// }
+				retcode = UserDataType_writer->write(*instance, instance_handle);
+				if (retcode != RETCODE_OK) {
+					fprintf(stderr, "write error %d\n", retcode);
+				}
 
+				std::cout << "B: Sent reply message " << count << " to A." << std::endl;
+				count++;
+			}
+		}
+		sleep(1);
 		// if (!received_message) {
 		// 	std::cerr << "B: Did not receive message " << count << " from A." << std::endl;
 		// }
 
-		// }
-		// sleep(1);
 	}
+	// }
 
 
 	/* 8. 删除所有实体和监听器 */
-	ReturnCode_t retcode = UserDataTypeTypeSupport::delete_data(instance);
+	retcode = UserDataTypeTypeSupport::delete_data(instance);
 	if (retcode != RETCODE_OK) {
 		fprintf(stderr, "UserDataTypeTypeSupport::delete_data error %d\n", retcode);
 	}
-	delete reader_listener;
+	// delete reader_listener;
 
 	status = subscriber_shutdown(participant);
 

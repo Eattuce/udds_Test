@@ -10,69 +10,53 @@
 /* IDL_TypeSupport.h中包含所有依赖的头文件 */
 #include "IDL_TypeSupport.h"
 
-int count = 0;
-bool cansend = false;
-DomainParticipant *participant = NULL;
-Publisher *publisher = NULL;
-Subscriber *subscriber = NULL;
-Topic *topic = NULL;
-DataWriter *writer = NULL;
-UserDataTypeDataWriter * UserDataType_writer = NULL;
-DataReader *reader = NULL;
-UserDataTypeDataReader *UserDataType_reader = NULL;
-UserDataType *instance = NULL;
-ReturnCode_t retcode;
-InstanceHandle_t instance_handle = HANDLE_NIL;
-const char *type_name = NULL;
 
+// class UserDataTypeListener : public DataReaderListener {
+// public:
+// 	virtual void on_data_available(DataReader* reader);
+// };
 
-class UserDataTypeListener : public DataReaderListener {
-public:
-	virtual void on_data_available(DataReader* reader);
-};
+// /* 重写继承过来的方法on_data_available()，在其中进行数据监听读取操作 */
+// void UserDataTypeListener::on_data_available(DataReader* reader)
+// {
+// 	UserDataTypeDataReader *UserDataType_reader = NULL;
+// 	UserDataTypeSeq data_seq;
+// 	SampleInfoSeq info_seq;
+// 	ReturnCode_t retcode;
+// 	int i;
 
-/* 重写继承过来的方法on_data_available()，在其中进行数据监听读取操作 */
-void UserDataTypeListener::on_data_available(DataReader* reader)
-{
-	UserDataTypeDataReader *UserDataType_reader = NULL;
-	UserDataTypeSeq data_seq;
-	SampleInfoSeq info_seq;
-	ReturnCode_t retcode;
-	int i;
+// 	/* 利用reader，创建一个读取UserDataType类型的UserDataType_reader*/
+// 	UserDataType_reader = UserDataTypeDataReader::narrow(reader);
+// 	if (UserDataType_reader == NULL) {
+// 		fprintf(stderr, "DataReader narrow error\n");
+// 		return;
+// 	}
 
-	/* 利用reader，创建一个读取UserDataType类型的UserDataType_reader*/
-	UserDataType_reader = UserDataTypeDataReader::narrow(reader);
-	if (UserDataType_reader == NULL) {
-		fprintf(stderr, "DataReader narrow error\n");
-		return;
-	}
+// 	/* 获取数据，存放至data_seq，data_seq是一个队列 */
+// 	retcode = UserDataType_reader->read(
+// 		data_seq, info_seq, 10, 0, 0, 0);
 
-	/* 获取数据，存放至data_seq，data_seq是一个队列 */
-	retcode = UserDataType_reader->read(
-		data_seq, info_seq, 10, 0, 0, 0);
+// 	if (retcode == RETCODE_NO_DATA) {
+// 		return;
+// 	}
+// 	else if (retcode != RETCODE_OK) {
+// 		fprintf(stderr, "take error %d\n", retcode);
+// 		return;
+// 	}
 
-	if (retcode == RETCODE_NO_DATA) {
-		return;
-	}
-	else if (retcode != RETCODE_OK) {
-		fprintf(stderr, "take error %d\n", retcode);
-		return;
-	}
+// 	for (int i = 0; i < data_seq.length(); ++i) {
+// 		auto sample = data_seq[i];
+// 		// if (/* sample.value == count && sample.id == 'b' &&  */count < 1000) {
+// 			std::cout << "A: Received message " << count << " from B." << std::endl;
+// 			instance->value = count;
+// 			instance->id = 'a';
 
-	for (int i = 0; i < data_seq.length(); ++i) {
-		auto sample = data_seq[i];
-		// if (/* sample.value == count && sample.id == 'b' &&  */count < 1000) {
-			std::cout << "A: Received message " << count << " from B." << std::endl;
-			instance->value = count;
-			instance->id = 'a';
-
-			retcode = UserDataType_writer->write(*instance, instance_handle);
-			std::cout << "A: Sent message " << count << " to B." << std::endl;
-			count++;
-		// }
-	}
-}
-UserDataTypeListener *reader_listener = new UserDataTypeListener();
+// 			retcode = UserDataType_writer->write(*instance, instance_handle);
+// 			std::cout << "A: Sent message " << count << " to B." << std::endl;
+// 			count++;
+// 		// }
+// 	}
+// }
 
 
 /* 删除所有实体 */
@@ -101,7 +85,20 @@ static int publisher_shutdown(DomainParticipant *participant)
 /* 发布者函数 */
 extern "C" int publisher_main(int domainId, int sample_count)
 {
-
+	int count = 0;
+	DomainParticipant *participant = NULL;
+	Publisher *publisher = NULL;
+	Subscriber *subscriber = NULL;
+	Topic *topic = NULL;
+	DataWriter *writer = NULL;
+	UserDataTypeDataWriter * UserDataType_writer = NULL;
+	DataReader *reader = NULL;
+	UserDataTypeDataReader *UserDataType_reader = NULL;
+	UserDataType *instance = NULL;
+	ReturnCode_t retcode;
+	InstanceHandle_t instance_handle = HANDLE_NIL;
+	const char *type_name = NULL;
+	// UserDataTypeListener *reader_listener = new UserDataTypeListener();
 
 
 	/* 1. 创建一个participant，可以在此处定制participant的QoS */
@@ -196,11 +193,11 @@ extern "C" int publisher_main(int domainId, int sample_count)
 
 	reader = subscriber->create_datareader(
 		topic, DATAREADER_QOS_DEFAULT/* 默认QoS */,
-		reader_listener/* listener */, STATUS_MASK_ALL);
+		0/* listener */, STATUS_MASK_ALL);
 	if (reader == NULL) {
 		fprintf(stderr, "create_datareader error\n");
 		publisher_shutdown(participant);
-		delete reader_listener;
+		// delete reader_listener;
 		return -1;
 	}
 
@@ -231,53 +228,56 @@ extern "C" int publisher_main(int domainId, int sample_count)
 	// 	//  sleep(1);//沉睡1秒
 	// }
 
-	// UserDataTypeSeq data_seq;
-	// SampleInfoSeq info_seq;
 
+	// instance->value = count;
+	// instance->id = 'a';
+	// retcode = UserDataType_writer->write(*instance, instance_handle);
+	// if (retcode != RETCODE_OK) {
+	// 	fprintf(stderr, "write error %d\n", retcode);
+	// }
+
+	// std::cout << "A: Sent message " << count << " to B." << std::endl;
 	auto start_time = std::chrono::system_clock::now();
-	instance->value = count;
-	instance->id = 'a';
-	retcode = UserDataType_writer->write(*instance, instance_handle);
 
-	while(1){
+	while(count < 10){
+		UserDataTypeSeq data_seq;
+		SampleInfoSeq info_seq;
 
-		
-		// if (cansend){
-		// 	retcode = UserDataType_writer->write(*instance, instance_handle);
-		// 	if (retcode != RETCODE_OK) {
-		// 		fprintf(stderr, "write error %d\n", retcode);
-		// 	}
-		// }
-
-		// do{
-		// 	retcode = UserDataType_writer->write(*instance, instance_handle);
-		// }while (retcode == RETCODE_OK);
-	
+		instance->value = count;
+		instance->id = 'a';
+		// retcode = UserDataType_writer->write(*instance, instance_handle);
 		// if (retcode != RETCODE_OK) {
 		// 	fprintf(stderr, "write error %d\n", retcode);
 		// }
-
-
-		// retcode = UserDataType_reader->take(data_seq, info_seq, 10, 0, 0, 0);
+		// std::cout << "A: Sent message " << count << " to B." << std::endl;
+	
+		retcode = UserDataType_reader->read(data_seq, info_seq, 10, 0, 0, 0);
 		
-		// if (retcode != RETCODE_OK) {
-		// 	fprintf(stderr, "read error %d\n", retcode);
-		// }
-		// bool received_reply = false;
-		// for (int i = 0; i < data_seq.length(); ++i) {
-		// 	auto sample = data_seq[i];
-		// 	if (sample.value == count && sample.id == 'b') {
-		// 		received_reply = true;
-		// 		std::cout << "A: Received reply message " << count << " from B." << std::endl;
-		// 	}
-		// }
+		if (retcode != RETCODE_OK) {
+			fprintf(stderr, "read error %d\n", retcode);
+		}
+		bool received_reply = false;
+		// std::cout << "data_seq.lenth(): " << data_seq.length() << std::endl;
+		for (int i = 0; i < data_seq.length(); ++i) {
+			auto sample = data_seq[i];
+			std::cout << "i:" << i << " count: " << count << " value: " << sample.value << " id: " << sample.id << std::endl;
+			if (sample.value == count && sample.id == 'b') {
+				received_reply = true;
+				retcode = UserDataType_writer->write(*instance, instance_handle);
+				if (retcode != RETCODE_OK) {
+					fprintf(stderr, "write error %d\n", retcode);
+				}
+
+				count++;
+				std::cout << "A: Received reply message " << count << " from B." << std::endl;
+			}
+		}
+		sleep(1);
 
 		// if (!received_reply) {
 		// 	std::cerr << "A: Did not receive reply message " << count << " from B." << std::endl;
 		// }
 
-		// count++;
-		// sleep(1);
 	}
 	auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::system_clock::now() - start_time).count();
@@ -290,7 +290,7 @@ extern "C" int publisher_main(int domainId, int sample_count)
 		fprintf(stderr, "UserDataTypeTypeSupport::delete_data error %d\n", retcode);
 	}
 
-	delete reader_listener;
+	// delete reader_listener;
 
 	/* 9. 删除所有实例 */
 	return publisher_shutdown(participant);
